@@ -17,11 +17,65 @@ The data and information about the variables are contained here
 4. To appropriately label the data set with descriptive variable names.
 5. To create an independent tidy data set with the average of each variable for each activity and each subjectf rom the data set in step 4
 
-### Review Criteria
+## Step by step explanation of the code
+## 1. Loading the packages needed
+
+library(data.table)
+library(dplyr)
+library(reshape2)
+
+## 2. Downloading the files and reading all the data into R
+
+### Download files and unzip them to Working directory
+
+url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+download.file(url, file.path(getwd(), "dataFiles.zip"))
+unzip(zipfile = "dataFiles.zip")
+
+### Reading the UCI Har Dataset files into R
+
+activityLabels <- fread("UCI HAR Dataset/activity_labels.txt",col.names = c("classLabels","activityname"))
+featurelist <- fread("UCI HAR Dataset/features.txt",col.names = c("index","features"))
+
+### isolating the mean and std features
+selectfeatures <- grep("(mean|std)\\(\\)", featurelist[, features])
+measurements <- featurelist[selectfeatures,features]
+measurements <- gsub('[()]', '', measurements)
+
+### reading the train and test data sets
+x_train <- fread(file.path(getwd(), "UCI HAR Dataset/train/X_train.txt"))[,selectfeatures,with = FALSE]
+data.table::setnames(x_train, colnames(x_train), measurements)
+activity_train <- fread(file.path(getwd(),"UCI HAR Dataset/train/y_train.txt"),col.names = c("Activity"))
+subject_train <- fread(file.path(getwd(),"UCI HAR Dataset/train/subject_train.txt"),col.names = c("subjectnumber"))
+
+x_test <- fread(file.path(getwd(), "UCI HAR Dataset/test/X_test.txt"))[,selectfeatures,with = FALSE]
+data.table::setnames(x_test, colnames(x_test), measurements)
+activity_test <- fread(file.path(getwd(),"UCI HAR Dataset/test/y_test.txt"),col.names = c("Activity"))
+subject_test <- fread(file.path(getwd(),"UCI HAR Dataset/test/subject_test.txt"),col.names = c("subjectnumber"))
 
 
-1. The submitted data set is tidy.
-2. The Github repo contains the required scripts.
-3. GitHub contains a code book that modifies and updates the available codebooks with the data to indicate all the variables and summaries    calculated, along with units, and any other relevant information.
-4. The README that explains the analysis files is clear and understandable.
-5. The work submitted for this project is the work of the student who submitted it.
+## 3. Combining the test and train data sets
+
+train <- cbind(activity_train,subject_train,x_train)
+test <- cbind(activity_test,subject_test,x_test)
+
+combined <- rbind(train,test)
+
+## 4. Finalizing the data set
+
+### Adding the activity labels to the combined data set dplyr
+merged <- merge(combined,activityLabels,by.x = "Activity",by.y = "classLabels") %>%
+select(activityname,subjectnumber,`tBodyAcc-mean-X`:`fBodyBodyGyroJerkMag-std`) 
+
+### Creating the summarized tidy data set using melt and dcast
+
+melted <- melt(merged, id=c("subjectnumber","activityname"))
+finaldf <- dcast(melted, subjectnumber+activityname ~ variable, mean)
+
+## 5. Writing the summarized data into a text file 
+
+data.table::fwrite(x = finaldf, file = "tidyData.txt", quote = FALSE)
+
+
+
+

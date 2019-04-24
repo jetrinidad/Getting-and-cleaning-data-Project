@@ -62,6 +62,6 @@ finaldf <- dcast(melted, subjectnumber+activityname ~ variable, mean)
 
 ## Writing the summary into a csv file
 
-data.table::fwrite(x = combined, file = "tidyData.txt", quote = FALSE)
+data.table::fwrite(x = finaldf, file = "tidyData.txt", quote = FALSE)
 
        
